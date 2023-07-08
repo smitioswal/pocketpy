@@ -35,7 +35,7 @@
 #define PK_DEBUG_CEVAL_STEP         0
 #define PK_DEBUG_FULL_EXCEPTION     0
 #define PK_DEBUG_MEMORY_POOL        0
-#define PK_DEBUG_NO_MEMORY_POOL     0
+#define PK_DEBUG_NO_MEMORY_POOL     1
 #define PK_DEBUG_NO_AUTO_GC         0
 #define PK_DEBUG_GC_STATS           0
 

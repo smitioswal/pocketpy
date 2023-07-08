@@ -1,4 +1,5 @@
 #include "pocketpy/memory.h"
+#include "pocketpy/common.h"
 
 #include <limits.h>
 #include <string.h>
@@ -91,17 +92,8 @@ b2BlockAllocator::~b2BlockAllocator()
 
 void* b2BlockAllocator::Allocate(int size)
 {
-	if (size == 0)
-	{
-		return nullptr;
-	}
-
-	PK_DEBUG_ASSERT(0 < size);
-
-	if (size > b2_maxBlockSize)
-	{
-		return malloc(size);
-	}
+	PK_DEBUG_ASSERT(size > 0);
+	PK_DEBUG_ASSERT(size <= b2_maxBlockSize);
 
 	int index = b2_sizeMap.values[size];
 	PK_DEBUG_ASSERT(0 <= index && index < b2_blockSizeCount);
@@ -126,7 +118,7 @@ void* b2BlockAllocator::Allocate(int size)
 
 		b2Chunk* chunk = m_chunks + m_chunkCount;
 		chunk->blocks = (b2Block*)malloc(b2_chunkSize);
-#if PK_DEBUG_EXTRA_CHECK
+#if PK_DEBUG_MEMORY_POOL
 		memset(chunk->blocks, 0xcd, b2_chunkSize);
 #endif
 		int blockSize = b2_blockSizes[index];
@@ -151,23 +143,13 @@ void* b2BlockAllocator::Allocate(int size)
 
 void b2BlockAllocator::Free(void* p, int size)
 {
-	if (size == 0)
-	{
-		return;
-	}
-
-	PK_DEBUG_ASSERT(0 < size);
-
-	if (size > b2_maxBlockSize)
-	{
-		free(p);
-		return;
-	}
+	PK_DEBUG_ASSERT(size > 0);
+	PK_DEBUG_ASSERT(size <= b2_maxBlockSize);
 
 	int index = b2_sizeMap.values[size];
 	PK_DEBUG_ASSERT(0 <= index && index < b2_blockSizeCount);
 
-#if PK_DEBUG_EXTRA_CHECK
+#if PK_DEBUG_MEMORY_POOL
 	// Verify the memory address and size is valid.
 	int blockSize = b2_blockSizes[index];
 	bool found = false;
@@ -176,12 +158,12 @@ void b2BlockAllocator::Free(void* p, int size)
 		b2Chunk* chunk = m_chunks + i;
 		if (chunk->blockSize != blockSize)
 		{
-			PK_DEBUG_ASSERT(	(int8*)p + blockSize <= (int8*)chunk->blocks ||
-						(int8*)chunk->blocks + b2_chunkSize <= (int8*)p);
+			PK_DEBUG_ASSERT(	(int8_t*)p + blockSize <= (int8_t*)chunk->blocks ||
+						(int8_t*)chunk->blocks + b2_chunkSize <= (int8_t*)p);
 		}
 		else
 		{
-			if ((int8*)chunk->blocks <= (int8*)p && (int8*)p + blockSize <= (int8*)chunk->blocks + b2_chunkSize)
+			if ((int8_t*)chunk->blocks <= (int8_t*)p && (int8_t*)p + blockSize <= (int8_t*)chunk->blocks + b2_chunkSize)
 			{
 				found = true;
 			}
@@ -214,14 +196,36 @@ static b2BlockAllocator g_blockAllocator;
 
 void* pool_alloc(int size)
 {
-    PK_GLOBAL_SCOPE_LOCK();
-    return g_blockAllocator.Allocate(size);
+#if PK_DEBUG_NO_MEMORY_POOL
+	return malloc(size);
+#endif
+	// extra 4 bytes for storing the size of the block
+	size += sizeof(int);
+	void* p;
+	if(size > b2_maxBlockSize){
+		p = malloc(size);
+	}else{
+		PK_GLOBAL_SCOPE_LOCK();
+		p = g_blockAllocator.Allocate(size);
+	}
+	*(int*)p = size;
+	return (int*)p + 1;
 }
 
-void pool_free(void* p, int size)
+void pool_dealloc(void* p)
 {
-    PK_GLOBAL_SCOPE_LOCK();
-    g_blockAllocator.Free(p, size);
+	PK_DEBUG_ASSERT(p != nullptr);
+#if PK_DEBUG_NO_MEMORY_POOL
+	free(p);
+	return;
+#endif
+	int* ptr = (int*)p - 1;
+	if(*ptr > b2_maxBlockSize){
+		free(ptr);
+	}else{
+		PK_GLOBAL_SCOPE_LOCK();
+		g_blockAllocator.Free(ptr, *ptr);
+	}
 }
 
 };  // namespace pkpy

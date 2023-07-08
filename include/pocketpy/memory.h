@@ -35,8 +35,8 @@ private:
 	b2Block* m_freeLists[b2_blockSizeCount];
 };
 
-void* pool_alloc(int size);
-void pool_dealloc(void* ptr);
+void* pool_alloc(int);
+void pool_dealloc(void*);
 
 template<typename T>
 void* pool_alloc() {

@@ -3,7 +3,7 @@
 namespace pkpy {
 
     Str& Str::operator=(const Str& other){
-        if(!is_inlined()) pool64.dealloc(data);
+        if(!is_inlined()) pool_dealloc(data);
         size = other.size;
         is_ascii = other.is_ascii;
         _alloc();
@@ -82,7 +82,7 @@ namespace pkpy {
     }
 
     Str::~Str(){
-        if(!is_inlined()) pool64.dealloc(data);
+        if(!is_inlined()) pool_dealloc(data);
         if(_cached_c_str != nullptr) free((void*)_cached_c_str);
     }
 

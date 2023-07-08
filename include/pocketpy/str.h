@@ -33,7 +33,7 @@ struct Str{
         if(size <= 16){
             this->data = _inlined;
         }else{
-            this->data = (char*)pool64.alloc(size);
+            this->data = (char*)pool_alloc(size);
         }
     }
 
