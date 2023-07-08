@@ -122,6 +122,12 @@ struct Type {
 
 #define PK_ASSERT(x) if(!(x)) FATAL_ERROR();
 
+#if PK_DEBUG_EXTRA_CHECK
+#define PK_DEBUG_ASSERT(x) if(!(x)) FATAL_ERROR();
+#else
+#define PK_DEBUG_ASSERT(x)
+#endif
+
 struct PyObject;
 #define PK_BITS(p) (reinterpret_cast<i64>(p))
 inline bool is_tagged(PyObject* p) noexcept { return (PK_BITS(p) & 0b11) != 0b00; }
